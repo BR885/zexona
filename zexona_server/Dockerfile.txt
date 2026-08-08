@@ -2,8 +2,8 @@ FROM dart:stable
 
 WORKDIR /app
 
-COPY . .
+COPY zeXona_server/ .
 
 RUN dart pub get
 
-CMD ["dart", "run", "bin/main.dart"]
+CMD ["dart", "simple_server.dart"]

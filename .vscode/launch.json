@@ -1,0 +1,38 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "zexona_flutter",
+            "cwd": "${workspaceFolder}/zexona_flutter",
+            "request": "launch",
+            "type": "dart",
+            "program": "lib/main.dart"
+        },
+        {
+            "name": "zexona_server",
+            "cwd": "${workspaceFolder}/zexona_server",
+            "request": "launch",
+            "type": "dart",
+            "preLaunchTask": "docker_compose_up",
+            "program": "bin/main.dart",
+            "env": {
+                "SERVERPOD_PASSWORD_database": "PB69gVxp_AemdiKDGuTr1A0SChugMg9Y"
+            },
+            "args": [
+                "--apply-migrations"
+            ]
+        }
+    ],
+    "compounds": [
+        {
+            "name": "zexona (full stack)",
+            "configurations": [
+                "zexona_server",
+                "zexona_flutter"
+            ],
+            "presentation": {
+                "order": 1
+            }
+        }
+    ]
+}

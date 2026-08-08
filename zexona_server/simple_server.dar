@@ -1,0 +1,58 @@
+import 'dart:io';
+import 'dart:convert';
+
+void main() async {
+  var server = await HttpServer.bind(InternetAddress.loopbackIPv4, 8082);
+  print('🚀 Zexona server running on http://localhost:8082');
+  print('📡 Waiting for requests...');
+
+  await for (HttpRequest request in server) {
+    print('📨 Request: ${request.method} ${request.uri.path}');
+    
+    try {
+      if (request.method == 'POST' && request.uri.path == '/auth/sendCode') {
+        // Handle send code
+        var body = await utf8.decoder.bind(request).join();
+        var data = jsonDecode(body);
+        var phone = data['phone'];
+        print('📱 Phone: $phone, Code: 123456');
+        
+        request.response
+          ..statusCode = 200
+          ..headers.contentType = ContentType.json
+          ..write(jsonEncode({'success': true, 'code': '123456'}))
+          ..close();
+      }
+      else if (request.method == 'POST' && request.uri.path == '/auth/verifyCode') {
+        // Handle verify code
+        var body = await utf8.decoder.bind(request).join();
+        var data = jsonDecode(body);
+        var code = data['code'];
+        print('🔍 Verifying code: $code');
+        
+        var success = code == '123456';
+        request.response
+          ..statusCode = 200
+          ..headers.contentType = ContentType.json
+          ..write(jsonEncode({'success': success}))
+          ..close();
+      }
+      else {
+        // Handle any other request
+        print('⚠️ Unknown path: ${request.uri.path}');
+        request.response
+          ..statusCode = 200
+          ..headers.contentType = ContentType.json
+          ..write(jsonEncode({'message': 'Zexona API is running!'}))
+          ..close();
+      }
+    } catch (e) {
+      print('❌ Error: $e');
+      request.response
+        ..statusCode = 500
+        ..headers.contentType = ContentType.json
+        ..write(jsonEncode({'error': 'Server error: $e'}))
+        ..close();
+    }
+  }
+}

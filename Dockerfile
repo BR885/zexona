@@ -2,21 +2,14 @@ FROM dart:stable
 
 WORKDIR /app
 
-# Copy the entire project
+# Copy everything
 COPY . .
 
-# Debug: List all files
-RUN ls -la
+# Copy and go to the server folder (lowercase 'z')
+WORKDIR /app/zexona_server
 
-# Debug: Find the server folder
-RUN find . -name "simple_server.dart" -type f
-
-# The server file is at zeXona_server/simple_server.dart
-WORKDIR /app/zeXona_server
-
-# Debug: Show current folder
-RUN pwd
-RUN ls -la
+# Check current directory
+RUN pwd && ls -la
 
 # Get dependencies
 RUN dart pub get

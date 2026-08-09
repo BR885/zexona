@@ -1,13 +1,11 @@
 name: zeXona_server
 version: 1.0.0
-description: Zexona chat app server with Google authentication
+description: Zexona chat app server
 environment:
   sdk: '>=3.0.0 <4.0.0'
 
 dependencies:
-  serverpod: ^3.4.11
   postgres: ^3.0.0
-  serverpod_auth_server: ^3.4.11
 
 dev_dependencies:
   serverpod_cli: ^3.4.11

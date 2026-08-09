@@ -2,8 +2,10 @@ FROM dart:stable
 
 WORKDIR /app
 
-COPY . .
+COPY zeXona_server/ zeXona_server/
 
-RUN cd zeXona_server && dart pub get
+WORKDIR /app/zeXona_server
 
-CMD ["dart", "zeXona_server/simple_server.dart"]
+RUN dart pub get
+
+CMD ["dart", "simple_server.dart"]

@@ -5,14 +5,11 @@ WORKDIR /app
 # Copy everything
 COPY . .
 
-# Copy and go to the server folder (lowercase 'z')
+# Go to the server folder
 WORKDIR /app/zexona_server
-
-# Check current directory
-RUN pwd && ls -la
 
 # Get dependencies
 RUN dart pub get
 
-# Run the server
+# Run the server on port 8080
 CMD ["dart", "simple_server.dart"]

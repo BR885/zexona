@@ -23,13 +23,22 @@ String? currentUserId;
 // ============ MAIN ============
 void main() async {
   try {
+    // Get database URL from environment variable (for Render) or use local
+    var databaseUrl = Platform.environment['DATABASE_URL'] ?? 
+        'postgresql://postgres:postgres@localhost:5432/zexona';
+    
+    print('📡 Connecting to database...');
+    
+    // Parse the URL
+    var uri = Uri.parse(databaseUrl);
+    
     db = await Connection.open(
       Endpoint(
-        host: 'localhost',
-        port: 5432,
-        database: 'zexona',
-        username: 'postgres',
-        password: 'postgres',
+        host: uri.host,
+        port: uri.port,
+        database: uri.path.substring(1), // Remove leading slash
+        username: uri.userInfo.split(':')[0],
+        password: uri.userInfo.split(':')[1],
       ),
       settings: ConnectionSettings(
         sslMode: SslMode.disable,
@@ -40,8 +49,8 @@ void main() async {
     await _createTables();
     await _loadDataFromDatabase();
 
-    var server = await HttpServer.bind(InternetAddress.loopbackIPv4, 8082);
-    print('🚀 Zexona server running on http://localhost:8082');
+    var server = await HttpServer.bind(InternetAddress.loopbackIPv4, 8080);
+    print('🚀 Zexona server running on http://localhost:8080');
     print('📡 Waiting for requests...');
 
     await for (HttpRequest request in server) {
@@ -76,7 +85,6 @@ void main() async {
             userNames[userId] = username;
             nameToUserId[username] = userId;
 
-            // Store the Google name
             userProfiles[userId] = {
               'name': name,
               'bio': 'Hey there! I\'m using Zexona',
@@ -165,7 +173,7 @@ void main() async {
               results.add({
                 'id': userId,
                 'username': entry.key,
-                'name': profile['name'] ?? entry.key,  // ← Real Google name
+                'name': profile['name'] ?? entry.key,
                 'avatar': profile['avatar'] ?? '',
                 'bio': profile['bio'] ?? '',
               });
@@ -218,7 +226,7 @@ void main() async {
             var username = userNames[contactId] ?? contactId;
             contactList.add({
               'id': contactId,
-              'name': profile['name'] ?? username,  // ← Real Google name
+              'name': profile['name'] ?? username,
               'avatar': profile['avatar'] ?? '',
               'username': username,
             });
@@ -417,7 +425,7 @@ void main() async {
               if (otherUserId.isNotEmpty) {
                 var profile = userProfiles[otherUserId] ?? {};
                 var username = userNames[otherUserId] ?? otherUserId;
-                name = profile['name'] ?? username;  // ← Real Google name
+                name = profile['name'] ?? username;
                 avatar = profile['avatar'] ?? '';
               } else {
                 name = 'Unknown User';
@@ -431,8 +439,9 @@ void main() async {
             if (lastMsg != null) {
               var senderId = lastMsg['userId'];
               if (senderId != userId) {
-                // Get sender's real name from the message
-                senderName = lastMsg['senderName'] ?? 'User';
+                var profile = userProfiles[senderId] ?? {};
+                var username = userNames[senderId] ?? senderId;
+                senderName = profile['name'] ?? username;
               } else {
                 senderName = 'You';
               }
@@ -471,8 +480,8 @@ void main() async {
             var senderId = msg['userId'];
             var senderProfile = userProfiles[senderId] ?? {};
             var senderUsername = userNames[senderId] ?? senderId;
-            var senderName = msg['senderName'] ?? senderProfile['name'] ?? senderUsername;
-            var senderAvatar = msg['senderAvatar'] ?? senderProfile['avatar'] ?? '';
+            var senderName = senderProfile['name'] ?? senderUsername;
+            var senderAvatar = senderProfile['avatar'] ?? '';
             
             var receiverId = '';
             var receiverName = '';
@@ -501,7 +510,7 @@ void main() async {
               'fileType': msg['fileType'],
               'time': msg['time'],
               'read': msg['read'],
-              'senderName': senderName,  // ← Real Google name
+              'senderName': senderName,
               'senderAvatar': senderAvatar,
               'receiverId': receiverId,
               'receiverName': receiverName,
@@ -523,13 +532,11 @@ void main() async {
 
           var msgId = 'msg_${DateTime.now().millisecondsSinceEpoch}';
 
-          // Get sender info from userProfiles (Google name)
           var senderProfile = userProfiles[userId] ?? {};
           var senderUsername = userNames[userId] ?? userId;
           var senderName = senderProfile['name'] ?? senderUsername;
           var senderAvatar = senderProfile['avatar'] ?? '';
           
-          // Get receiver info for 1-on-1 chats
           var receiverId = '';
           var receiverName = '';
           var receiverAvatar = '';
@@ -549,7 +556,6 @@ void main() async {
             }
           }
           
-          // Create message with sender's real name
           var msg = {
             'id': msgId,
             'userId': userId,
@@ -558,7 +564,7 @@ void main() async {
             'fileType': fileType,
             'time': DateTime.now().toIso8601String(),
             'read': false,
-            'senderName': senderName,  // ← Real Google name
+            'senderName': senderName,
             'senderAvatar': senderAvatar,
             'receiverId': receiverId,
             'receiverName': receiverName,
@@ -574,7 +580,6 @@ void main() async {
           messages.putIfAbsent(chatId, () => []);
           messages[chatId]!.add(msg);
 
-          // Add chat to sender's list
           if (userId != null) {
             userChats.putIfAbsent(userId, () => <String>[]);
             if (!userChats[userId]!.contains(chatId)) {
@@ -583,7 +588,6 @@ void main() async {
             }
           }
 
-          // Add chat to receiver's list (for 1-on-1 chats)
           if (!chatId.startsWith('group_') && receiverId.isNotEmpty) {
             userChats.putIfAbsent(receiverId, () => <String>[]);
             if (!userChats[receiverId]!.contains(chatId)) {

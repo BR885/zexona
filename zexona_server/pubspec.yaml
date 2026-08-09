@@ -1,11 +1,11 @@
-name: zeXona_server
-version: 1.0.0
-description: Zexona chat app server
-environment:
-  sdk: '>=3.0.0 <4.0.0'
+FROM dart:stable
 
-dependencies:
-  postgres: ^3.0.0
+WORKDIR /app
 
-dev_dependencies:
-  serverpod_cli: ^3.4.11
+COPY . .
+
+RUN ls -la
+
+RUN dart pub get || true
+
+CMD ["dart", "zeXona_server/simple_server.dart"]

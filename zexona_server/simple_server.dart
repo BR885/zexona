@@ -45,14 +45,21 @@ void main() async {
     var username = userInfo.length > 0 ? userInfo[0] : 'postgres';
     var password = userInfo.length > 1 ? userInfo[1] : 'postgres';
 
+    // Get port - if not specified, use default 5432
+    var port = uri.port;
+    if (port == 0) {
+      port = 5432; // Default PostgreSQL port
+    }
+
     print('📡 Host: ${uri.host}');
-    print('📡 Port: ${uri.port}');
+    print('📡 Port: $port');
     print('📡 Database: ${uri.path.substring(1)}');
+    print('📡 Username: $username');
 
     db = await Connection.open(
       Endpoint(
         host: uri.host,
-        port: uri.port,
+        port: port,
         database: uri.path.substring(1), // Remove leading slash
         username: username,
         password: password,

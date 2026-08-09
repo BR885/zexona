@@ -23,22 +23,39 @@ String? currentUserId;
 // ============ MAIN ============
 void main() async {
   try {
-    // Get database URL from environment variable (for Render) or use local
-    var databaseUrl = Platform.environment['DATABASE_URL'] ?? 
-        'postgresql://postgres:postgres@localhost:5432/zexona';
-    
-    print('📡 Connecting to database...');
-    
+    // Get database URL from environment variable (for Render)
+    var databaseUrl = Platform.environment['DATABASE_URL'];
+
+    // If DATABASE_URL is not set, use local
+    if (databaseUrl == null || databaseUrl.isEmpty) {
+      databaseUrl = 'postgresql://postgres:postgres@localhost:5432/zexona';
+      print('📡 Using local database');
+    } else {
+      print('📡 Using Render database');
+    }
+
+    print('📡 DATABASE_URL exists: ${databaseUrl != null}');
+    print('📡 DATABASE_URL length: ${databaseUrl?.length ?? 0}');
+
     // Parse the URL
-    var uri = Uri.parse(databaseUrl);
-    
+    var uri = Uri.parse(databaseUrl!);
+
+    // Extract credentials
+    var userInfo = uri.userInfo.split(':');
+    var username = userInfo.length > 0 ? userInfo[0] : 'postgres';
+    var password = userInfo.length > 1 ? userInfo[1] : 'postgres';
+
+    print('📡 Host: ${uri.host}');
+    print('📡 Port: ${uri.port}');
+    print('📡 Database: ${uri.path.substring(1)}');
+
     db = await Connection.open(
       Endpoint(
         host: uri.host,
         port: uri.port,
         database: uri.path.substring(1), // Remove leading slash
-        username: uri.userInfo.split(':')[0],
-        password: uri.userInfo.split(':')[1],
+        username: username,
+        password: password,
       ),
       settings: ConnectionSettings(
         sslMode: SslMode.disable,

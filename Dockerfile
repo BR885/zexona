@@ -2,7 +2,7 @@ FROM dart:stable
 
 WORKDIR /app
 
-COPY zeXona_server/ .
+COPY zecona_server/ .
 
 RUN dart pub get
 

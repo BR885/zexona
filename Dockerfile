@@ -5,14 +5,23 @@ WORKDIR /app
 # Copy everything
 COPY . .
 
-# Go to the server folder
-WORKDIR /app/zeXona_server
+# List all files and folders
+RUN ls -la
 
-# List files to see what's there
+# Look for server folder
+RUN ls -la ze* || echo "No ze folder found"
+RUN ls -la *server* || echo "No server folder found"
+
+# Try to go to the server folder
+WORKDIR /app/zeXona_server || WORKDIR /app/zexona_server || WORKDIR /app/zecona_server
+
+# Show current directory
+RUN pwd
+
+# Show files in current directory
 RUN ls -la
 
 # Get dependencies
 RUN dart pub get
 
-# Run the server
 CMD ["dart", "simple_server.dart"]

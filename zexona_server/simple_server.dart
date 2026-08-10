@@ -23,61 +23,98 @@ String? currentUserId;
 // ============ MAIN ============
 void main() async {
   try {
-    // Get database URL from environment variable (for Render)
+    print('🚀 Starting Zexona Server...');
+    print('🔍 Checking environment...');
+    
+    // Debug environment variables
+    print('   DATABASE_URL: ${Platform.environment['DATABASE_URL'] != null ? '✅ SET' : '❌ NOT SET'}');
+    print('   PORT: ${Platform.environment['PORT'] ?? 'NOT SET'}');
+    print('   RENDER: ${Platform.environment['RENDER'] ?? 'NOT SET'}');
+    
+    // Get database URL from environment
     var databaseUrl = Platform.environment['DATABASE_URL'];
 
-    // If DATABASE_URL is not set, use local
     if (databaseUrl == null || databaseUrl.isEmpty) {
+      print('❌ DATABASE_URL not set in environment variables!');
+      print('📡 Please add DATABASE_URL in Render dashboard > Environment');
+      print('📡 Using fallback localhost (will fail on Render)');
       databaseUrl = 'postgresql://postgres:postgres@localhost:5432/zexona';
-      print('📡 Using local database');
     } else {
       print('📡 Using Render database');
+      // Mask password for security
+      var masked = databaseUrl.replaceAll(RegExp(r':[^:@]+@'), ':****@');
+      print('📡 DATABASE_URL: $masked');
     }
 
-    print('📡 DATABASE_URL exists: ${databaseUrl != null}');
-    print('📡 DATABASE_URL length: ${databaseUrl?.length ?? 0}');
-
     // Parse the URL
+    print('📡 Parsing database URL...');
     var uri = Uri.parse(databaseUrl!);
-
+    
     // Extract credentials
     var userInfo = uri.userInfo.split(':');
     var username = userInfo.length > 0 ? userInfo[0] : 'postgres';
     var password = userInfo.length > 1 ? userInfo[1] : 'postgres';
 
-    // Get port - if not specified, use default 5432
+    // Get port
     var port = uri.port;
     if (port == 0) {
-      port = 5432; // Default PostgreSQL port
+      port = 5432;
     }
 
-    print('📡 Host: ${uri.host}');
-    print('📡 Port: $port');
-    print('📡 Database: ${uri.path.substring(1)}');
-    print('📡 Username: $username');
+    // Get database name - SAFE parsing
+    var databaseName = 'postgres';
+    if (uri.path.isNotEmpty && uri.path.length > 1) {
+      databaseName = uri.path.substring(1);
+    }
 
-    db = await Connection.open(
-      Endpoint(
-        host: uri.host,
-        port: port,
-        database: uri.path.substring(1), // Remove leading slash
-        username: username,
-        password: password,
-      ),
-      settings: ConnectionSettings(
-        sslMode: SslMode.disable,
-      ),
-    );
-    print('✅ Connected to PostgreSQL');
+    print('📡 Connection details:');
+    print('   Host: ${uri.host}');
+    print('   Port: $port');
+    print('   Database: $databaseName');
+    print('   Username: $username');
+    print('   SSL: Enabled (Render requires SSL)');
 
+    // Connect to PostgreSQL with SSL
+    print('📡 Connecting to PostgreSQL...');
+    
+    try {
+      db = await Connection.open(
+        Endpoint(
+          host: uri.host,
+          port: port,
+          database: databaseName,
+          username: username,
+          password: password,
+        ),
+        settings: ConnectionSettings(
+          sslMode: SslMode.require, // Render REQUIRES SSL
+        ),
+      );
+      print('✅ Connected to PostgreSQL successfully!');
+    } catch (e) {
+      print('❌ Failed to connect to PostgreSQL: $e');
+      print('');
+      print('📡 Troubleshooting tips:');
+      print('   1. Check DATABASE_URL is correct in Render dashboard');
+      print('   2. Make sure you\'re using the Internal URL (not External)');
+      print('   3. Check that your PostgreSQL database is running');
+      print('   4. Wait 2-3 minutes for database to be fully ready');
+      rethrow;
+    }
+
+    // Create tables and load data
     await _createTables();
     await _loadDataFromDatabase();
 
-    var server = await HttpServer.bind(InternetAddress.loopbackIPv4, 8080);
-    print('🚀 Zexona server running on http://localhost:8080');
-    print('📡 Waiting for requests...');
+    // Get port from environment (Render provides PORT)
+    var serverPort = int.tryParse(Platform.environment['PORT'] ?? '8080') ?? 8080;
+    
+    var server = await HttpServer.bind(InternetAddress.anyIPv4, serverPort);
+    print('🚀 Zexona server running on port $serverPort');
+    print('📡 Server is ready for requests!');
 
     await for (HttpRequest request in server) {
+      // Handle CORS preflight
       if (request.method == 'OPTIONS') {
         request.response
           ..statusCode = 200
@@ -151,8 +188,6 @@ void main() async {
           var username = userNames[userId] ?? email;
           
           currentUserId = userId;
-          print('✅ Current user ID set to: $currentUserId');
-          print('✅ User name: ${userProfiles[userId]?['name']}');
 
           _sendJson(request.response, {
             'success': true,
@@ -660,6 +695,14 @@ void main() async {
           }
         }
 
+        // ============ HEALTH CHECK ============
+        else if (request.method == 'GET' && request.uri.path == '/health') {
+          _sendJson(request.response, {
+            'status': 'healthy',
+            'timestamp': DateTime.now().toIso8601String(),
+          });
+        }
+
         else {
           request.response
             ..statusCode = 404
@@ -668,12 +711,18 @@ void main() async {
             ..close();
         }
       } catch (e) {
-        print('❌ Error: $e');
+        print('❌ Error processing request: $e');
         _sendJson(request.response, {'error': '$e'}, 500);
       }
     }
   } catch (e) {
     print('❌ Server failed to start: $e');
+    print('');
+    print('📡 To fix this:');
+    print('   1. Go to Render Dashboard > Web Service > Environment');
+    print('   2. Add DATABASE_URL with your PostgreSQL connection string');
+    print('   3. Click Save Changes and wait for redeploy');
+    exit(1);
   }
 }
 

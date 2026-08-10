@@ -51,16 +51,21 @@ void main() async {
       port = 5432; // Default PostgreSQL port
     }
 
+    // Get database name - safely handle empty path
+    var databaseName = uri.path.isNotEmpty && uri.path.length > 1 
+        ? uri.path.substring(1) 
+        : 'postgres'; // Default database name
+
     print('📡 Host: ${uri.host}');
     print('📡 Port: $port');
-    print('📡 Database: ${uri.path.substring(1)}');
+    print('📡 Database: $databaseName');
     print('📡 Username: $username');
 
     db = await Connection.open(
       Endpoint(
         host: uri.host,
         port: port,
-        database: uri.path.substring(1), // Remove leading slash
+        database: databaseName,
         username: username,
         password: password,
       ),
